@@ -20,6 +20,7 @@ Resolvable VM names: the inventory script collects the VM names (and not IP addr
 
 
 ### Changelog:
+- Added groups for nodes and vm by nodes (by @rtgibbons)
 - Added option to ignore invalid SSL certificate (by @bmillemathias) [PR](https://github.com/ansible/ansible/pull/17247)
 - Compatible with a Proxmox cluster (by @xezpeleta)
 - Added group 'running' (by @xezpeleta)

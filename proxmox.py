@@ -39,10 +39,28 @@ from six import iteritems
 
 from ansible.module_utils.urls import open_url
 
+class ProxmoxNode(dict):
+    def get_variables(self):
+        variables = {}
+        for key, value in iteritems(self):
+            variables['proxmox_' + key] = value
+        return variables
+
 
 class ProxmoxNodeList(list):
+    def __init__(self, data=[], pxmxver=0.0):
+        self.ver = pxmxver
+        for item in data:
+            self.append(ProxmoxNode(item))
+
     def get_names(self):
         return [node['node'] for node in self]
+
+    def get_variables(self):
+        variables = {}
+        for node in self:
+            variables[node['id']] = node.get_variables()
+        return variables
 
 
 class ProxmoxVM(dict):
@@ -194,6 +212,9 @@ def main_list(options, config_path):
         'all': {
             'hosts': [],
         },
+        'nodes': {
+            'hosts': [],
+        },
         '_meta': {
             'hostvars': {},
         }
@@ -202,9 +223,17 @@ def main_list(options, config_path):
     proxmox_api = ProxmoxAPI(options, config_path)
     proxmox_api.auth()
 
-    for node in proxmox_api.nodes().get_names():
+    proxmox_nodes = proxmox_api.nodes()
+
+    results['nodes']['hosts'] = proxmox_nodes.get_names()
+    results['all']['hosts'] = proxmox_nodes.get_names()
+    results['_meta']['hostvars'].update(proxmox_nodes.get_variables())
+
+    for node in proxmox_nodes.get_names():
         qemu_list = proxmox_api.node_qemu(node)
+
         results['all']['hosts'] += qemu_list.get_names()
+        results['node/'+node] = {'hosts': qemu_list.get_names()}
         results['_meta']['hostvars'].update(qemu_list.get_variables())
         if proxmox_api.version().get_version() >= 4.0:
             lxc_list = proxmox_api.node_lxc(node)
