@@ -258,8 +258,10 @@ def main_list(options, config_path):
                 type = results['_meta']['hostvars'][vm]['proxmox_type']
             except KeyError:
                 type = 'qemu'
+            
+            vmconfig = proxmox_api.vm_config_by_type(node, vmid, type)
             try:
-                description = proxmox_api.vm_config_by_type(node, vmid, type)['description']
+                description = vmconfig['description']
             except KeyError:
                 description = None
 
@@ -292,6 +294,24 @@ def main_list(options, config_path):
                 results['running']['hosts'] += [vm]
 
             results['_meta']['hostvars'][vm].update(metadata)
+
+            # Create group 'linux | windows', alloww --limit 'linux'
+            # https://pve.proxmox.com/wiki/Manual:_qm.conf
+            ostype = vmconfig['ostype']
+            windows = ['wxp', 'w2k', 'w2k3', 'w2k8', 'wvista', 'win7', 'win8', 'win10']
+            linux = ['l26', 'l24']
+            if (ostype in windows):
+                if 'windows' not in results:
+                    results['windows'] = { 'hosts': [] }
+                results['windows']['hosts'] += [vm]
+            elif (ostype in linux):
+                if 'linux' not in results:
+                    results['linux'] = { 'hosts': [] }
+                results['linux']['hosts'] += [vm]
+            else:
+                if ostype not in results:
+                    results[ostype] = { 'hosts': [] }
+                results[ostype]['hosts'] += [vm]
 
     # pools
     for pool in proxmox_api.pools().get_names():
